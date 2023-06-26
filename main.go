@@ -58,8 +58,14 @@ func connectWithWebSocket(writer http.ResponseWriter, request *http.Request) {
 	// добавление клиента в список
 	listOfClients[connection] = true
 
-	// ожидание закрытия соединения
-	<-make(chan struct{})
+	for {
+		_, _, err := connection.ReadMessage()
+		if err != nil {
+			log.Print(errors.Wrapf(err, "can not read message"))
+
+			break
+		}
+	}
 
 	// удаление клиента после закрытия соединения
 	delete(listOfClients, connection)
