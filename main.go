@@ -10,9 +10,9 @@ import (
 )
 
 var (
-	address       = ":8080"
-	listOfClients = make(map[*websocket.Conn]bool)
-	//channelForSendingMessage = make(chan []byte)
+	address            = ":8080"
+	listOfClients      = make(map[*websocket.Conn]bool)
+	stopWordFromClient = "goodbye"
 )
 
 func serveHome(writer http.ResponseWriter, request *http.Request) {
@@ -43,6 +43,24 @@ func sendMessagesToClients() {
 	}
 }
 
+func handleMessageFromClient(connection *websocket.Conn, messageInByte []byte) bool {
+	messageInString := string(messageInByte)
+
+	if messageInString == stopWordFromClient {
+		log.Print("client sent stop-word", stopWordFromClient, ". close connection")
+
+		return false // чтобы указать, что нужно закрыть соединение
+	}
+
+	responseMessage := []byte("thank you for message")
+	err := connection.WriteMessage(websocket.TextMessage, responseMessage)
+	if err != nil {
+		log.Print(errors.Wrapf(err, "can not send response message"))
+	}
+
+	return true // продолжаем обработку сообщений
+}
+
 func connectWithWebSocket(writer http.ResponseWriter, request *http.Request) {
 	// настройка веб-сокет соединения
 	upgrader := websocket.Upgrader{} // обработка http-соединения до веб-сокета
@@ -59,11 +77,15 @@ func connectWithWebSocket(writer http.ResponseWriter, request *http.Request) {
 	listOfClients[connection] = true
 
 	for {
-		_, _, err := connection.ReadMessage()
+		typeOfMessage, messageInBytes, err := connection.ReadMessage()
 		if err != nil {
-			log.Print(errors.Wrapf(err, "can not read message"))
+			log.Print(errors.Wrapf(err, "can not read message from client:", typeOfMessage))
 
 			break
+		}
+
+		if !handleMessageFromClient(connection, messageInBytes) {
+			break // при false выходим из цикла
 		}
 	}
 
