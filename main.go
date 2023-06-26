@@ -26,13 +26,19 @@ func sendMessagesToClients() {
 	for range ticker.C {
 		messageForClients := []byte("hello. i am here")
 
+		listOfClientsToBeRemoved := make([]*websocket.Conn, 0) //список для передачи клиентов, чтобы в последующем их удалить
+
 		for connectionForClient := range listOfClients {
 			err := connectionForClient.WriteMessage(websocket.TextMessage, messageForClients)
 			if err != nil {
 				log.Print(errors.Wrapf(err, "can not send message"))
 
-				delete(listOfClients, connectionForClient) //удаление клиента из списка
+				listOfClientsToBeRemoved = append(listOfClientsToBeRemoved, connectionForClient)
 			}
+		}
+
+		for _, connectionForRemoveClient := range listOfClientsToBeRemoved {
+			delete(listOfClients, connectionForRemoveClient) //удаляем клиента
 		}
 	}
 }
