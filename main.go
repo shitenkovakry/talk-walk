@@ -19,17 +19,20 @@ func serveHome(writer http.ResponseWriter, request *http.Request) {
 	http.ServeFile(writer, request, "index.html")
 }
 
-func sendMessagesToClients(connection *websocket.Conn) {
+func sendMessagesToClients() {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
 	for range ticker.C {
 		messageForClients := []byte("hello. i am here")
 
-		err := connection.WriteMessage(websocket.TextMessage, messageForClients)
-		if err != nil {
-			log.Print(errors.Wrapf(err, "can not write message"))
-			break
+		for connectionForClient := range listOfClients {
+			err := connectionForClient.WriteMessage(websocket.TextMessage, messageForClients)
+			if err != nil {
+				log.Print(errors.Wrapf(err, "can not send message"))
+
+				delete(listOfClients, connectionForClient) //удаление клиента из списка
+			}
 		}
 	}
 }
@@ -49,8 +52,6 @@ func connectWithWebSocket(writer http.ResponseWriter, request *http.Request) {
 	// добавление клиента в список
 	listOfClients[connection] = true
 
-	go sendMessagesToClients(connection)
-
 	// ожидание закрытия соединения
 	<-make(chan struct{})
 
@@ -65,7 +66,9 @@ func main() {
 	// '/ws' будет обрабатываться функцией connectWithWebSocket, которая устанавливает веб-сокет соединение
 	http.HandleFunc("/ws", connectWithWebSocket)
 
-	log.Println("server listen and serve at:")
+	go sendMessagesToClients()
+
+	log.Println("server listen and serve at:", address)
 	err := http.ListenAndServe(address, nil)
 	if err != nil {
 		log.Print(errors.Wrapf(err, "can not connect with server"))
