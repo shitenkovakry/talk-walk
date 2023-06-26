@@ -10,9 +10,9 @@ import (
 )
 
 var (
-	address                  = ":8080"
-	listOfClients            = make(map[*websocket.Conn]bool)
-	channelForSendingMessage = make(chan []byte)
+	address       = ":8080"
+	listOfClients = make(map[*websocket.Conn]bool)
+	//channelForSendingMessage = make(chan []byte)
 )
 
 func serveHome(writer http.ResponseWriter, request *http.Request) {
@@ -41,6 +41,8 @@ func connectWithWebSocket(writer http.ResponseWriter, request *http.Request) {
 	connection, err := upgrader.Upgrade(writer, request, nil)
 	if err != nil {
 		log.Print(errors.Wrapf(err, "failed to set up connection with websocket"))
+
+		return
 	}
 	defer connection.Close()
 
